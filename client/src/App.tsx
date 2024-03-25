@@ -1,4 +1,5 @@
 // import { useState } from "react";
+import { useState } from "react";
 import "./App.css";
 
 // users.set("user1", "password1");
@@ -20,7 +21,8 @@ const arr = [
 ];
 
 function App() {
-  // const [profile, setProfile] = useState({} as any);
+  const [csrfToken, setCsrfToken] = useState("");
+  console.log(csrfToken);
   return (
     <>
       {arr.map((user) => (
@@ -37,7 +39,10 @@ function App() {
                   ...user,
                 }),
               })
-                .then(() => {
+                .then((res) => res.json())
+                .then((data) => {
+                  setCsrfToken(data.csrfToken);
+                  alert(JSON.stringify(data));
                   alert(`${user.username} Logged In`);
                 })
                 .catch((err) => alert(err));
@@ -53,11 +58,13 @@ function App() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              csrfToken,
             },
             credentials: "include",
           })
             .then(() => {
               alert("Logged out");
+              setCsrfToken("");
             })
             .catch((err) => alert(err));
         }}
@@ -66,11 +73,13 @@ function App() {
       </button>
       <button
         onClick={() => {
+          console.log("profile", csrfToken);
           fetch("http://localhost:3000/profile", {
             method: "GET",
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
+              "csrfToken": csrfToken,
             },
           })
             .then((res) => res.json())

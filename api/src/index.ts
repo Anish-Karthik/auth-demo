@@ -21,21 +21,31 @@ users.set("user1", "password1");
 users.set("user2", "password2");
 users.set("admin", "admin");
 
-const SESSION = new Map<string, string>();
+const SESSION = new Map<
+  string,
+  {
+    username: string;
+    password: string;
+    csrfToken: string;
+  }
+>();
+
+
 
 app.post("/login", (req, res) => {
   console.log(req.body);
   const { username, password } = req.body;
   if (users.get(username) === password) {
     const sessionId = crypto.randomBytes(16).toString("hex");
-    SESSION.set(sessionId, username);
+    const csrfToken = crypto.randomBytes(16).toString("hex");
+    SESSION.set(sessionId, { username, password, csrfToken });
     res.cookie("sessionId", sessionId, {
       httpOnly: true,
       sameSite: "none",
       maxAge: 1000 * 60 * 60 * 24,
       secure: true,
     });
-    res.json({ sessionId });
+    res.json({ csrfToken });
   } else {
     res.status(401).send("Invalid username or password");
   }
@@ -44,11 +54,29 @@ app.post("/login", (req, res) => {
 app.post("/logout", (req, res) => {
   try {
     const sessionId = req.cookies.sessionId;
+    const csrfToken = req.headers.csrftoken;
+    console.log("logout", csrfToken);
     console.log(sessionId);
-    if (sessionId) {
-      SESSION.delete(sessionId);
-      res.clearCookie("sessionId");
+    if (!sessionId) {
+      res.status(401).send("Unauthenticated");
+      return;
     }
+    if (!csrfToken) {
+      res.status(401).send("CSRF token missing");
+      return;
+    }
+    const session = SESSION.get(sessionId);
+    if (!session) {
+      res.status(401).send("Unauthenticated");
+      return;
+    }
+    if (session.csrfToken !== csrfToken) {
+      res.status(403).send("Invalid CSRF token");
+      return;
+    }
+
+    SESSION.delete(sessionId);
+    res.clearCookie("sessionId");
     res.send("Logged out");
   } catch (error: any) {
     console.log(error.message);
@@ -58,6 +86,27 @@ app.post("/logout", (req, res) => {
 
 app.get("/profile", (req, res) => {
   const sessionId = req.cookies.sessionId;
+  const csrfToken = req.headers.csrftoken;
+  console.log(csrfToken);
+  console.log(req.headers);
+  if (!sessionId) {
+    res.status(401).send("Unauthenticated");
+    return;
+  }
+  if (!csrfToken) {
+    res.status(401).send("CSRF token missing");
+    return;
+  }
+  const session = SESSION.get(sessionId);
+  if (!session) {
+    res.status(401).send("Unauthenticated");
+    return;
+  }
+  if (session.csrfToken !== csrfToken) {
+    res.status(403).send("Invalid CSRF token");
+    return;
+  }
+
   if (sessionId) {
     const username = SESSION.get(sessionId);
     if (username) {
