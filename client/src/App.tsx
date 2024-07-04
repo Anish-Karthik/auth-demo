@@ -1,6 +1,7 @@
 // import { useState } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
+import axios from "axios";
 
 // users.set("user1", "password1");
 // users.set("user2", "password2");
@@ -18,10 +19,34 @@ const arr = [
     username: "admin",
     password: "admin",
   },
+  {
+    username: "anishkarthika21cs@psnacet.edu.in",
+    password: "password",
+  },
+  {
+    username: "athomaspaulroy@psnacet.edu.in",
+    password: "password",
+  },
+  {
+    username: "benedictraja@psnacet.edu.in",
+    password: "password",
+  },
+  {
+    username: "csehod@psnacet.edu.in",
+    password: "password",
+  }
 ];
 
 function App() {
   const [csrfToken, setCsrfToken] = useState("");
+  useEffect(() => {
+    fetch("http://localhost:3000/api/", {
+      method: "GET",
+      credentials: "include",
+    })
+      .then(() => console.log("Cookie set"))
+      .catch((err) => console.log(err.message));
+  }, []);
   console.log(csrfToken);
   return (
     <>
@@ -29,23 +54,40 @@ function App() {
         <div key={user.username}>
           <button
             onClick={() => {
-              fetch("http://localhost:3000/login", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                  ...user,
-                }),
-              })
-                .then((res) => res.json())
+              // fetch("http://localhost:3000/login", {
+              //   method: "POST",
+              //   headers: {
+              //     "Content-Type": "application/json",
+              //   },
+              //   credentials: "include",
+              //   body: JSON.stringify({
+              //     ...user,
+              //   }),
+              // })
+              axios
+                .post(
+                  "http://localhost:3000/api/auth/signup",
+                  {
+                    ...user,
+                  },
+                  {
+                    withCredentials: true,
+                  }
+                )
+                // .then((res) => {
+                //   console.log(res.headers);
+                //   return res.json();
+                // })
                 .then((data) => {
                   setCsrfToken(data.csrfToken);
+                  console.log(data);
                   alert(JSON.stringify(data));
-                  alert(`${user.username} Logged In`);
+                  // alert(`${user.username} Logged In`);
                 })
-                .catch((err) => alert(err));
+                .catch((err) => {
+                  console.log(err);
+                  alert(err);
+                });
             }}
           >
             {user.username} login
@@ -54,16 +96,17 @@ function App() {
       ))}
       <button
         onClick={() => {
-          fetch("http://localhost:3000/logout", {
+          fetch("http://localhost:3000/api/auth/logout", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              csrfToken,
+              // csrfToken,
             },
             credentials: "include",
           })
-            .then(() => {
-              alert("Logged out");
+            .then((response) => response.json())
+            .then((data) => {
+              alert(data.message);
               setCsrfToken("");
             })
             .catch((err) => alert(err));
@@ -74,12 +117,12 @@ function App() {
       <button
         onClick={() => {
           console.log("profile", csrfToken);
-          fetch("http://localhost:3000/profile", {
+          fetch("http://localhost:3000/api/auth/profile", {
             method: "GET",
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
-              "csrfToken": csrfToken,
+              csrfToken: csrfToken,
             },
           })
             .then((res) => res.json())
